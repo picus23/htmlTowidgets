@@ -1,0 +1,216 @@
+<div id="app"></div>
+<script src="showDialog/showDialog.js"></script>
+<link rel="stylesheet" href="showDialog/showDialog.css">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1" crossorigin="anonymous">
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/js/bootstrap.bundle.min.js" integrity="sha384-ygbV9kiqUc6oa4msXn9868pTtWMgiQaeYH7/t7LECLbyPA2x65Kgf80OJFdroafW" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.0/beautify.js"></script>
+<script>
+
+
+    const stylex = {
+        border: 'none',
+        width: '50%',
+        height: '600px'
+    }
+
+    function JSONtoWidgets(code){
+        function drawStr(props){
+            let wid = '';
+            if (props!=''){
+                let child = 'child' in props?props.child:false;
+                if (child) delete props['child']
+
+                wid += `w('${props.tag}',`;
+                delete props['tag']
+
+                let propsstr = JSON.stringify(props, false, '   ')
+                propsstr = propsstr.substr(1, propsstr.length-2).trim()
+                propsstr = propsstr!=''?propsstr+',':''
+                wid += "{\n" + propsstr +'\n'
+
+                if (child){
+                    wid += 'child: [\n'
+                    child.map(ix => {
+                        wid += drawStr(ix)
+                        wid += ',\n'
+                    })
+
+                    wid += ']\n'
+                }
+
+                wid += '})'
+            }
+            return wid;
+        }
+
+        return drawStr(code)
+    }
+
+    document.getElementById('app').appendChild(
+        widget('div', (_state) => ({
+            style: {
+                display: 'flex'
+            },
+            child: [
+                widget('textarea', {
+                    style: stylex,
+                    innerHTML:`<div style="background: #ccc;">dsa</div>`,
+                    oninput(){
+                        let code = this.value
+                        let lvl = 0
+
+
+                        function getParams(str){
+                            const result = {}
+                            let cursor = 0;
+                            let find_cymb = '';
+                            let attr = '';
+                            let value = '';
+
+                            result['tag'] = str.split(' ')[0].trim();
+
+                            (' '+str).split('').map((i, key) => {
+                                if ((find_cymb!='"' && find_cymb!="'") & i==' '){
+                                    find_cymb = ' '
+                                    cursor = key
+                                } else if (i=='='){
+                                    find_cymb = '='
+                                    attr = str.substr(cursor, key-cursor-1);
+
+                                    cursor = key
+                                } else if (i=='"'){
+                                    if (find_cymb=='"'){
+                                        find_cymb=''
+                                        value = str.substr(cursor, key-cursor-1);
+                                    } else {
+                                        find_cymb='"'
+                                    }
+
+                                    cursor = key
+                                } else if (i=="'"){
+                                    if (find_cymb=="'"){
+                                        find_cymb=''
+                                        value = str.substr(cursor, key-cursor-1);
+                                    } else {
+                                        find_cymb="'"
+                                    }
+
+                                    cursor = key
+                                }   
+
+                                if (attr!='' && value!=''){
+                                    if (attr=='class') {
+                                        attr='className'
+                                        value = [value]
+                                    }
+
+                                    if (attr=='style') {
+                                        attr='style'
+                                        mystyle = {}
+
+                                        value.split(';').map(itm => {
+                                            itm = itm.split(':')
+                                            if (itm.length>1)
+                                                mystyle[itm[0].trim()?.replaceAll('\n', '')] = itm[1].trim()?.replaceAll('\n', '');
+                                        })
+
+                                        value = mystyle
+                                    }
+
+                                    result[attr] = value
+                                    attr = ''
+                                    value = ''
+                                }
+                            })
+
+                            return result
+                        }
+                        
+
+                        const dclose = ['img', 'br', 'hr', 'input']
+
+                        const struct = {tag: 'div'}
+                        let element = struct
+                        code.split('<').map(i => {
+                            let [attr, html] = i.split('>')
+                            
+                            const prm = getParams(attr);
+                            if (html)
+                                prm['innerHTML'] = html
+
+                            if (prm.tag!='')
+                            if (prm.tag.substr(0,1)!='/'){
+                                if (!('child' in element))
+                                    element['child'] = []
+                                
+                                prm['parent'] = element
+
+                                element['child'].push(prm)
+                                console.log(element.tag,dclose.indexOf(element.tag))
+                                if (dclose.indexOf(element.tag)==-1){
+                                    element = element['child'][element['child'].length -1]
+                                }
+
+                            } else {
+                                // console.log('back')
+                                element = element['parent']
+                            }
+                        });
+
+
+                        function clearStruct(struct2){
+                            const res = {}
+                            Object.keys(struct2).filter(itm => itm!='parent').map(itm => {
+                                // console.log(itm);
+                                if (itm!='child')
+                                    res[itm] = struct2[itm]
+                                else
+                                    if (struct2['child'].length!=0)
+                                        res[itm] = struct2['child'].map(i => 
+                                            clearStruct(i)
+                                        )
+                            })
+
+                            return res
+                        }
+
+                        struct_clear = clearStruct(struct)
+
+                        _state.code = struct_clear 
+                    }
+                }),
+                widget('div', {
+                    style: stylex,
+                    child: _state.state(({code, asWidgets}) => {
+                        
+                            let wid = false;
+                            if (code=='') return false
+                            const widcode = JSONtoWidgets(code);
+                            eval(";wid = " + widcode)
+
+
+                            return [widget('textarea', {
+                                                style: {...stylex, width: '100%'},
+                                                innerHTML: js_beautify(widcode, { indent_size: 4, space_in_empty_paren: true })
+                                            }),
+                                            
+                                    widget('div',{
+                                        style: {
+                                            padding: '20px'
+                                        },
+                                        child: wid 
+                                    })
+                            ]
+                    })
+                })
+            ]
+        }), {
+            code: '',
+            asWidgets: false
+        })
+
+    )
+
+
+</script>
+
