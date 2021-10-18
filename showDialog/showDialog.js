@@ -1,327 +1,478 @@
-// У message есть THIS!
-
 let old_wx0183 = null;
 const hahc_xauto_scrollx42ex = {}
-const widgetListx42ex = {}
+
 const lh__8ijmd21nn23 = {}
 
-
-
 const __widget__store__ = {}
-const w = widget;
-function widget(element, params = false, state = false){
-	if (typeof params == 'function')
-		params = params(state != false ? new WidgetState(state): state)
+const globalState = []
 
-	if (element in __widget__store__)
-		return __widget__store__[element](params)
+const DEFAULTWIDGETTAG = 'div'
 
-
-
-	if (!(element instanceof HTMLElement)){
-		switch (element.substr(0,1)) {
-			case '#': return widgetListx42ex[element.substr(1)].element
-			case '$': return widgetListx42ex[element.substr(1)].params
-			case '@':
-				element = widgetListx42ex[element.substr(1)].element
-			break;
-			default:
-				element = document.createElement(element)
-			break;
-		}
-	}
-	
-	function widgetlisner(elm, cell ,listener){
-		const func2 = listener.result.bind(listener.object)
-		const func3 = () => {
-			// Создать сток для изминений при обновление
-			widget(elm, {[cell]: func2()})
-		}
-		listener.object.addEventListener(listener.on, func3);
-		func3()
-	}
-
-	let oncreate = false;
-	
-	if (params) 
-	for (let i of Object.keys(params)) { 
-		if (typeof params[i]=='function' && i.substr(0,2)!='on'){
-			params[i]([element, i])
+class widget {
+	static addChild(element, child) {
+		if (child!==false && child!==undefined)
+		if (child instanceof HTMLElement){
+			element.appendChild(child)
 		} else 
-		switch (i) {
-			case 'oncreate':
-				oncreate = params[i].bind(element)
-			break;
-			case 'style':
-				for (let j of Object.keys(params[i])) {
-					if (Array.isArray(params[i][j])){
-						element.style[j] = params[i][j][0]
-						setTimeout(() => 
-							element.style[j] = params[i][j][1]
-						, 10)
+		if (Array.isArray(child)){
+			child.map(
+				ch =>widget.addChild(element, ch)
+			)
+		} else
+		if (WidgetState.canBind(child)){
+			const temp_child = document.createElement(DEFAULTWIDGETTAG)
+			child.link(temp_child, 'child')
+			widget.addChild(element, temp_child)
+		} else
+		if (typeof child == 'function'){
+			widget.addChild(element, child())
+		} else {
+			const temp_child = document.createElement(DEFAULTWIDGETTAG)
+			temp_child.innerHTML = child
+			widget.addChild(element, temp_child)
+		}
+	}
+
+
+	static createElement(element, props = false, state = false) {
+		// Обертка
+		if (props && typeof props == 'object' && 'element' in props){
+			element = props.element
+			delete props.element
+			return widget.createElement(element, props)
+		}
+
+
+		// Оброботка state
+		if (typeof props == 'function'){
+			props = props(WidgetState.use(state?state:{}))
+		}
+
+		const true_elements = [
+			"area", "base", "br", 
+			"col", "embed", "hr", 
+			"img", "input", "link", 
+			"menuitem", "meta", "param", 
+			"source", "track", "wbr"
+		]
+
+		// Оброботка props
+		if (props && true_elements.indexOf(element)==-1 && (
+			Array.isArray(props)
+			|typeof props == 'string'
+			|(typeof props == 'function' && state==false)
+			|(typeof props == 'object' && 
+				!('child' in props) && 
+				!('innerHTML' in props) && 
+				!('value' in props) && 
+				!(element in __widget__store__)
+			) 
+			|props instanceof HTMLElement
+		)) {
+			props = {child: props}
+		}
+
+
+		// Оброботка element
+		if (element in __widget__store__){
+			return __widget__store__[element](props, state)
+		} else 
+		if (typeof element == 'string'){
+
+
+			// быстрые классы
+			if (element.indexOf("__")!=-1){
+				const classes = element.split('__')
+				element = classes[0]
+				let classList = ''
+				classes[1]
+					.replaceAll('$$', '-')
+					.replaceAll('$', ' ')
+					.split('')
+					.map(char => {
+					if (char!=char.toLowerCase(char)){
+						classList += '-' + char.toLowerCase(char)
 					} else {
-						if (typeof params[i][j] == 'function'){
-							params[i][j]([element, i, j])
-						} else {
-							element.style[j] = params[i][j]
-						}
+						classList += char
 					}
-				}
-			break;
-			// case 'hover':
-			//     let hoverstyle = '';
-			//     for (let j of Object.keys(params[i])) {
-			//         hoverstyle += `${j}: ${params[i][j]};`
-			//     }
-			//     const xid = 'id' in params?params['id']:`d${Math.random()}`.replace('.','f__')
-			//     element.id = xid
+				})
 
-			//     hoverstyle = `#${xid}:hover {${hoverstyle}}`
+				if (!props)
+					props = {}
 
-			//     const styleElement = document.createElement('style')
-			//     if (styleElement.styleSheet) {
-			//         styleElement.styleSheet.cssText = hoverstyle;
-			//     } else {
-			//         styleElement.appendChild(document.createTextNode(hoverstyle));
-			//     }
-			//     document.getElementsByTagName('head')[0].appendChild(styleElement)
-			// break;
-			case 'child':
-				while (element.firstChild)
-					element.removeChild(element.firstChild);
+				props['className'] = classList
+			}
 
-				if (Array.isArray(params[i]))
-					params[i].map((child) => {
-							if (child)
-								if (child instanceof HTMLElement)
-									element.appendChild(child)
-								else
-									element.innerHTML += child
-					})
-				else 
-					if (params[i])
-						if (params[i] instanceof HTMLElement)
-							element.appendChild(params[i])
-						else
-							element.innerHTML += params[i]
-			break;
-			case 'name':
-				_params = params!=false ? params :{}
 
-				_params['on'] = function(event, func){
-					const func2 = func.bind(element)
-					element.addEventListener(event, func2);
-					
-					if (!(params[i] in  lh__8ijmd21nn23)) lh__8ijmd21nn23[params[i]] = []
-						lh__8ijmd21nn23[params[i]].push(event) 
 
-					return {
-						object: element,
-						listener: params[i],
-						on: event,
-						result: func
-					}
-				}
 
-				widgetListx42ex[params[i]] = {element, params:_params}
-			default:
-					element[i] = params[i]
-			break;
+			element = document.createElement(element)
 		}
-	} 
-	if (oncreate && typeof oncreate == 'function') oncreate();
-	return element;
-}
 
+		let oncreate = false;
 
-function widgetRegister(name, _widget = () => {}){
-	if (name in __widget__store__){
-		throw 'Компонент ' + name + ' - уже зарегистрирован!';
-		console.error('Компонент ',name, ' - уже зарегистрирован!');
-		return false;
-	}
-	__widget__store__[name] = (prps) => {
-		return _widget(prps)
-	}
-	return true;
-}
-
-class WidgetState{
-	constructor(data, root = false, parent = false){
-		this.props = data
-		this.updates = {}
-
-		this.parent = parent
-		this.root = root?root:this
-
-		Object.keys(data).map((itm) => {
-			this.push({[itm]: data[itm]})
-		})
-	}
-
-
-
-	push(array_or_object){
-		const inserted = []
-		Object.keys(array_or_object).map(index => {
-			const element = array_or_object[index];
-			const key = Array.isArray(array_or_object)?(Array.isArray(this.props)?this.props.length:Math.floor(Math.random()*10000)):index
-
-			this.props[key] = element
-
-			const data = {[key]: element}
-			Object.keys(data).map((itm) => {
-				const f = itm.substr(0,1)!='_' && typeof data[itm] == 'object';
-				if (f){
-					this[itm] = new WidgetState(data[itm])
-				} else {
-					if (!(itm in this))
-					Object.defineProperty(this, itm, {
-						get:function () {
-							return f?this[itm]:data[itm]
-						},
-						set:function (val){
-							data[itm] = val
-							this.props[itm] = val
-							this.updateOnly(itm);
+		// Применение свойств
+		if (props) 
+		for (let i of Object.keys(props)) { 
+			const prop = props[i];
+			switch (i) {
+				case 'oncreate':
+					oncreate = prop.bind(element)
+				break;
+				case 'style':
+					if (typeof prop == 'string')
+						element.style = prop
+					else
+						for (let j of Object.keys(prop)) {
+							const styleElement = prop[j]
+							if (Array.isArray(styleElement)){
+								element.style[j] = styleElement[0]
+								setTimeout(() => 
+									element.style[j] = styleElement[1]
+								, 10)
+							} else {
+								if ((typeof styleElement == 'object' && 'link' in styleElement) | typeof styleElement == 'function') {
+									WidgetState.inspector(styleElement, [element, i, j])
+								} else {
+									element.style[j] = styleElement
+								}
+							}
 						}
-					});
-					else throw(`[WidgetState].push()  ${itm} - уже определен!`)
-				}
-			})
+				break;
+				case 'child':
+					while (element.firstChild)
+						element.removeChild(element.firstChild);
 
-			inserted.push(key)
+					widget.addChild(element, prop)
+				break;
+				default:
+					if (WidgetState.canBind(prop) || (typeof value == 'function' && i.substr(0, 2) != 'on')) {
+						WidgetState.inspector(prop, [element, i])
+					} else {
+						element[i] = prop
+					}
+				break;
+			}
+		} 
+		if (oncreate && typeof oncreate == 'function') oncreate();
+
+
+		props
+		state
+
+		return element
+	}
+
+
+	static body(element) {
+		window.document.body.appendChild(c.div(element));
+	}
+
+
+	static renderTo(querySelector, element, state = false) {
+		const toElement = window.document.querySelector(querySelector);
+		if (toElement){
+			toElement.appendChild(c.div(element, state))
+		} else {
+			window.addEventListener('load', () => {
+				widget.renderTo(querySelector, element, state)
+			});
+		}
+	}
+
+
+	static app(element, state = false) {
+		const el = c.div(element, state)
+		c.renderTo('#app', el)
+	}
+
+
+	static getElementConstructor(cprop = {}) {
+		const getProxy = (st = cprop) => new Proxy(st, {
+			set(element, prop, value){
+				element[prop] = value;
+				return getProxy(element)
+			},
+			get(element, prop){
+				if (prop=='element')
+					return c.div(element)
+				else
+					return (val) => {
+						element[prop] = val
+						return getProxy(element)
+					}
+			}
 		})
 
-		this.updateOnly('__self');
-
-		return inserted
+		return getProxy()
 	}
 
-	myPath(){
-		let result = '';
-		let element = this;
-		while (element.parent){
-			result = element.parent.inCell + '/' + result;
-			element = element.parent.widget;
+
+	static widgetRegister(name, _widget = () => false) {
+		if (name in __widget__store__){
+			throw 'Компонент ' + name + ' - уже зарегистрирован!';
+			return false;
 		}
-		result = `root/${result}`;
-		return result
+		__widget__store__[name] = (prps) => {
+			return _widget(prps)
+		}
+		return true;
 	}
+}
 
-	updateOnly(key = false){
-		let log = this.myPath() + `[${key}]`;
-		let updateParent = false;
+Array.prototype.c = function(cprop = {}) {
+	return widget.getElementConstructor(cprop)
+}
 
-		if (key in this.updates){
-			log += `( ${key} +)`;
-			this.updates[key].map(updateme => {
-				WidgetState.widget_update(this, updateme)
-			})
-			if (this.parent) {
-				this.parent.widget.updateOnly(this.parent.inCell)
-				updateParent = true;
+const w = (element, params = false, state = false) => widget.createElement(element, params, state);
+const c = new Proxy({}, {
+	get:(_, tag) => {
+		if (typeof widget[tag] === 'function'){
+			return widget[tag]
+		} else {
+			return function (props = false, state = false) {
+				return widget.createElement(tag, props, state)
 			}
 		}
+	},
+	set:(_, tag, props) => widget.widgetRegister(tag, props)
+})
 
-		if (key!='__self'){
-			log += `( ${key} +   == key!='__self')`;
-			this.updateOnly('__self')
-		}
+class WidgetState {
+    static use(obj){
+        const setParents = []
 
-		if (this.parent && updateParent == false) {
-			log += `( only parent )`;
-			this.parent.widget.updateOnly(this.parent.inCell)
-			updateParent = true;
+		Object.keys(obj).map(i => {
+			if (typeof obj[i]=='object' && i.substr(0,1)!='_'){
+				
+				if (Array.isArray(obj[i])){
+					const array = {}
+					obj[i].map((val, key) => {
+						array[''+key] = val
+					})
+					obj[i] = array
+				}
+				
+				obj[i] = WidgetState.use(obj[i])
+				setParents.push(i)
+			}
+		})
+
+		obj['___parent'] = false;
+
+        const state = new Proxy(obj, {
+            get(object, prop){
+                if (WidgetState[prop]){
+                    return function(){
+						const result = WidgetState[prop].apply(this, [object, ...arguments])
+						if (typeof result == 'function'){
+							return result.apply(this, arguments)
+						} else {
+							return result
+						}
+					}
+                } else {
+                    return object[prop]
+                }
+            },
+            set(object, prop, value){
+                object[prop] = value
+                WidgetState.updateAll(object, prop)
+            }
+        })
+
+		setParents.map(i => {
+			state[i].set('___parent', state)
+		})
+
+        globalState.push(state)
+        return state;
+    }
+
+	static set(self, key, value){
+		self[key] = value
+		WidgetState.updateAll(self)
+	}
+
+	static push(self, prop){
+		const count = WidgetState.keys(self).length 
+		self['' + count] = prop
+
+		WidgetState.updateAll(this)
+	}
+
+	static filterSystemVars(array){
+		const exception = ['___updates', '___parent'] 
+		return array.filter(itm => {
+			return exception.indexOf(itm)==-1
+		})
+	}
+
+	static keys(self){
+		return WidgetState.filterSystemVars(Object.keys(self))
+	}
+
+	static values(self){
+		return WidgetState.keys(self).map(itm => self[itm])
+	}
+
+	static map(self, func){
+		return WidgetState.values(self).map(func)
+	}
+
+	static length(self){
+		return WidgetState.keys(self).length
+	}
+
+	static canBind(value){
+		const res = (typeof value == 'object' && value!=null && 'link' in value)
+		return res
+	}
+
+    static watch(self){
+        return (props) => {
+            let updateFunction = _vars => _vars;
+            if (typeof props == 'function'){
+                // try {
+                    updateFunction = props
+                    const [_, fprops] = /\(?(.{0,}?)[\)|=]/m.exec(props.toString())
+                    props = fprops.split(',').map(i => i.trim())
+                // } catch (e) {
+                    // props = Object.keys(self.props)
+                // }
+            } else if (typeof props == 'string'){
+                props = props.split(',').map(i => i.trim())
+            }
+
+            return {
+                link(){
+                    if (!('___updates' in self)) self['___updates'] = {}
+                    
+                    props.map(prop => {
+                        if (!(prop in self['___updates'])) self['___updates'][prop] = []
+                        self['___updates'][prop].push({
+                            path: Array.isArray(arguments[0])?arguments[0]:arguments,
+                            update: updateFunction,
+                            props: props
+                        })
+                        WidgetState.updateAll(self, prop)
+                    })
+                }
+            }
+        }
+    }
+
+	static model(self){
+		return (prop) => {
+			// console.log(this)
+			// console.log(self)
+			// console.log(prop)
+			return {
+				link(){
+					console.log('arguments', arguments)
+
+					// console.log('---------');
+					WidgetState.elementPropsArraySetValue(arguments[0], () => {
+						this[prop] = arguments[0][0][prop]
+
+						console.log('state', this)
+					})
+				}
+			}
 		}
 	}
 
-	remove(key){
-		delete this.props[key]
-		this[key] = undefined
-		this.updateOnly('__self');
+	/**
+	 * Установить значение по пути до элемента
+	 * 
+	 * @param {array} elementProps 
+	 * @param {*} value 
+	 */
+	static elementPropsArraySetValue(elementProps, value){
+		let element = elementProps.shift();
+		let elementPropperty = 'child'
+		while (elementProps.length!=0){
+			elementPropperty = elementProps.shift();
+			if (elementProps.length==0)
+				break
+			
+			element = element[elementPropperty]
+		}
+
+		if (elementPropperty.substr(0,1)=='on' && typeof value == 'function'){
+			el.addEventListener(elementPropperty, value, false);
+		} else {
+			element[elementPropperty] = value
+		}
 	}
 
-	static widget_update(_self, updateme, callBack = false){
-		if (_self.__parent){
-			// console.log('__parent', _self.__parent);
-			// console.log('updateme', updateme);
-		}
+    static updateAll(self, _prop = false) {
+		let props = [] 
+		if (_prop==false)
+			props = WidgetState.keys(self)
+		else 
+			props = [_prop]
+		
+		props.map(prop => {
 
-		widget(updateme.element[0], 
-			WidgetState.__update(updateme.element, 
+			if ('___updates' in self && prop in self['___updates']){
+				self['___updates'][prop].map(updateList => {
+					const props = updateList.props
+					const update = updateList.update
+					const mp = [...updateList.path]
 
-				callBack == false?
-				(typeof updateme.callBack == 'function' ? updateme.callBack(_self) : _self)  
-				:callBack(_self)
+					let element = mp.shift();
+					let elementPropperty = 'child'
+					while (mp.length!=0){
+						elementPropperty = mp.shift();
+						if (mp.length==0)
+						break
+						
+						element = element[elementPropperty]
+					}
 
-			)
-		);
-	}
-	
-	static __update = (updateme, callBack) => {
-		const updateme2 = updateme.slice(0);
-		updateme2.shift()
-		const params = {}
-		let lift = params;
-		while (updateme2.length > 1) {
-			const ccv = updateme2.shift();
-			lift[ccv] = {};
-			lift = lift[ccv]
-		}
-		lift[updateme2.shift()] = callBack
-		return params
-	}
-
-	state(callBack){
-		let __self = false;
-		let _vars = '';
-		try {
-			[,_vars] = /{(.{0,}?)}/g.exec(callBack.toString())
-			_vars = _vars.split(',').map(i => i.trim())
-		} catch(e){
-			// console.error(callBack.toString() + ' - не указаны в фигурных скобках аргументы');
-			_vars = Object.keys(this.props)
-			// _vars = this
-			__self = true;
-		}
-
-		const getProps = (arr) => {
-			let prps = {}
-			arr.map(itm => {
-				prps[itm] = this[itm]
-			})
-			return prps
-		}
-
-		return (updateme) => {
-			// widget(updateme[0], WidgetState.__update(updateme, callBack(getProps(_vars))));
-			// console.log(updateme)
-			// console.log(getProps(_vars))
-
-			WidgetState.widget_update(__self?this:getProps(_vars), {element: updateme}, callBack)
-
-			// widget_update(updateme)
-
-			if (__self){
-				if (!('__self' in this.updates)) this.updates['__self'] = []
-				this.updates['__self'].push({element: updateme, callBack:() => callBack(getProps(Object.keys(this)))})
-			} else 
-				_vars.map(itm => {
-					if (!(itm in this.updates)) this.updates[itm] = []
-					this.updates[itm].push({element: updateme, callBack:() => callBack(getProps(_vars))})
+					const properties = []
+					props.map(i => {
+						properties.push(self[i])
+					})
+					
+					const value = update.apply(this, properties);
+					w(element, {
+						[elementPropperty]: value
+					})
 				})
-		}
+			}
+		})
+
+
+		if (self.___parent) 
+			WidgetState.updateAll(self.___parent)
+    }
+
+    static props(self) {
+		const props = {}
+		Object.entries(self).map(([key, value]) => {
+			if (['___updates', '___parent'].indexOf(key)==-1){
+				props[key] = value;
+			}
+		})
+        return props;
+    }
+
+	static import(elements) {
+		console.log('import', elements);
 	}
 
-
-	static import(elements){
-		console.log('import', elements);
+    static inspector(func, to) {
+		if ('link' in func)
+			func.link(to)
+		else
+			console.log('Find State');
 	}
 }
 
 
-function showDialog({ title, message, buttons, data, state = false, style, methods, form_request, nav}) {
+function showDialog({title, message, buttons, data, state = false, style, methods, form_request, nav}) {
 	return new Promise(function(resolve, reject) {
 		
 		if (state){
@@ -331,8 +482,6 @@ function showDialog({ title, message, buttons, data, state = false, style, metho
 				data = state
 			state = true
 		}
-
-
 
 		let navPath = ''
 		let navigator = null
@@ -401,7 +550,7 @@ function showDialog({ title, message, buttons, data, state = false, style, metho
 				let name = array[i][0];
 				let value = array[i][1];
 
-				if (name.indexOf('[') != -1) {
+				if (name && name.indexOf('[') != -1) {
 					let exp = name.split('[');
 					let new_name = exp[0];
 					let id = exp[1].replace(']', '');
@@ -426,7 +575,9 @@ function showDialog({ title, message, buttons, data, state = false, style, metho
 			if (old_wx0183) {
 				try {
 					old_wx0183.parentNode.removeChild(old_wx0183);
-				} catch (err) { console.log('showDialog', err) }
+				} catch (err) { 
+					console.log('showDialog', err) 
+				}
 				old_wx0183 = null
 				document.body.style.overflow = 'auto'
 				if (methods && 'onclose' in methods && typeof methods['onclose'] == 'function')
@@ -672,7 +823,7 @@ function showDialog({ title, message, buttons, data, state = false, style, metho
 				messageToFieldset(to, message, data())
 				return false;
 			} else if (state != false && data?.constructor?.name!="WidgetState"){
-				data = new WidgetState(data)
+				data = WidgetState.use(data)
 				_bind['data'] = data;
 				messageToFieldset(to, message, data)
 				return false;

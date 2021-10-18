@@ -1,0 +1,38 @@
+.textinput {
+    width: calc(50% - 4px);
+    box-sizing: border-box;
+    padding: 5px;
+    border: 1px solid #3d3f3f;
+    margin: 2px;
+    min-height: 600px;
+    background: #262727;
+    color: #fff;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.textinput:focus {
+    outline: none;
+    background: #2b2c2c;
+}
+
+::selection {
+    background: rgb(67, 106, 150);
+}
+
+body {
+    background: #262727;
+}
+
+
+*::-webkit-scrollbar {
+    width: 10px;
+}
+
+*::-webkit-scrollbar-track {
+    background: #0000;
+}
+
+*::-webkit-scrollbar-thumb {
+    border-radius: 30px;
+    background: #202020;
+}
