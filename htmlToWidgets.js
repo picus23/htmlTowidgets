@@ -71,7 +71,6 @@ class HTW {
      */
     getComplexity(){
         this.getTagRoad()
-        // console.log(this.tagRoad)
 
         let mapIndex = 0
         this.tags.map((tag, index) => {
