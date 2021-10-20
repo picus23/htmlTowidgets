@@ -38,7 +38,10 @@ class HTW {
      */
     wrapContent(){
         this.getComplexity()
-        // this.removetags()
+        this.tags.map(tag => {
+            console.log(tag.body)
+            
+        })
         return this
     }
 
@@ -74,23 +77,29 @@ class HTW {
 
         let mapIndex = 0
         this.tags.map((tag, index) => {
-
             let mylvlIs = 0
+            let bodyStart = -1
+            let bodyEnd = this.html.length
 
             for (const level of this.tagRoad){
                 if (tag.position>=level.position){
-                    // this.tags[index].level = level.level
                     mylvlIs = level.level
                 } else {
-                    break
+                    if (bodyStart==-1){
+                        bodyStart = level.position + HTW.opentag.length
+                    }
+                    if (mylvlIs==level.level) {
+                        bodyEnd = level.position
+                        break;
+                    }
                 }
             }
 
             tag.level = mylvlIs
+            tag.end = bodyEnd
+            tag.bodyStart = bodyStart
+            tag.body = this.html.slice(tag.bodyStart, tag.end)
         })
-
-
-        console.log(this.tags)
     }
 
 
